@@ -1,0 +1,51 @@
+stages:
+  - build
+  - deploy
+  - start
+
+build:
+  stage: build
+  script:
+    - sudo systemctl stop nginx
+    - sudo systemctl stop kestrel-forum.service
+    - sudo service postgresql stop
+    - dotnet publish --configuration Release
+  only:
+    - master
+  variables:
+    GIT_STRATEGY: fetch
+  tags:
+    - forum
+
+deploy:
+  stage: deploy
+  script:
+    - sudo mv -f /var/www/forum/wwwroot/images/users/* /home/admin/pdps/
+    - sudo mv -f /var/www/forum/wwwroot/images/badges/* /home/admin/badges/
+    - sudo rm -rf /var/www/forum/*
+    - sudo cp /home/admin/fichiers-forum/appsettings.json /var/www/forum/appsettings.json
+    - sudo mv -f $CI_PROJECT_DIR/Forum/bin/Release/netcoreapp3.1/publish* /var/www/forum/
+    - sudo mv -f /home/admin/pdps/* /var/www/forum/wwwroot/images/users/
+    - sudo mv -f /home/admin/badges/* /var/www/forum/wwwroot/images/badges/
+    - sudo rm /var/www/forum/ClientApp/build/static/js/*.map
+    - sudo rm /var/www/forum/ClientApp/build/static/css/*.map
+  variables:
+    GIT_STRATEGY: none
+  only:
+    - master
+  tags:
+    - forum
+
+start:
+  stage: start
+  script:
+    - sudo service postgresql start
+    - sudo systemctl start nginx
+    - sudo systemctl start kestrel-forum.service
+  variables:
+    GIT_STRATEGY: none
+  only:
+    - master
+  when: always
+  tags:
+    - forum
