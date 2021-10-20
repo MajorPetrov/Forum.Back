@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using Forum.Data;
-using Forum.Models.Poll;
-using Forum.Models.Reply;
+using ForumJV.Data;
+using ForumJV.Models.Poll;
+using ForumJV.Models.Reply;
 
-namespace Forum.Models.Post
+namespace ForumJV.Models.Post
 {
     public class PostIndexModel
     {

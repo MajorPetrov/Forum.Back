@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Http;
 
-namespace Forum.Models.ApplicationUser
+namespace ForumJV.Models.ApplicationUser
 {
     public class ProfileImageModel
     {

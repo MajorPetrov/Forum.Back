@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Forum.Services.Tests
+namespace ForumJV.Services.Tests
 {
     [TestFixture]
     public class EmailSenderTest

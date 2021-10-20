@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Forum.Data.Models;
+using ForumJV.Data.Models;
 
-namespace Forum.Data.Services
+namespace ForumJV.Data.Services
 {
     public interface IPostReply
     {
@@ -11,6 +11,7 @@ namespace Forum.Data.Services
         Task<IEnumerable<PostReply>> GetRepliesByPage(int postId, int pageNumber);
         Task<IEnumerable<PostReply>> GetPinnedRepliesByPost(int id);
         Task<int> GetRepliesCountByPost(int id);
+        Task<int> GetReplyPage(PostReply reply);
         Task Create(PostReply reply);
         Task Edit(int id, string message);
         Task Delete(int id);

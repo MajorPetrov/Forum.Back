@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 
-namespace Forum.Data.Models
+namespace ForumJV.Data.Models
 {
-    public class Poll
+    public class Poll : BaseEntity
     {
-        public int PostId { get; set; }
         public string Question { get; set; }
-        public virtual IEnumerable<PollOption> Options { get; set; }
+        public IEnumerable<PollOption> Options { get; set; }
+
+        public int PostId { get; set; }
+        public Post Post { get; set; }
     }
 }

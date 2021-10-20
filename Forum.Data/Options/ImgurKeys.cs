@@ -1,4 +1,4 @@
-namespace Forum.Data.Options
+namespace ForumJV.Data.Options
 {
     public class ImgurKeys
     {

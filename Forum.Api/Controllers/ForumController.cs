@@ -4,13 +4,13 @@ using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
-using Forum.Data;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.Forum;
-using Forum.Models.Post;
+using ForumJV.Data;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.Forum;
+using ForumJV.Models.Post;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     public class ForumController : Controller
@@ -53,42 +53,42 @@ namespace Forum.Controllers
                     if (forum == null)
                         return NotFound(new { error = $"Le forum d'identifiant : '{id}' n'existe pas." });
 
-                    _cache.Set(CacheKeys.Forum + id + pageNumber, forum, CacheKeys.Expiration);
+                    _cache.Set(CacheKeys.Forum + pageNumber, forum, CacheKeys.Expiration);
                 }
 
                 if (!_cache.TryGetValue(CacheKeys.PostsByPage + pageNumber, out posts))
                 {
                     posts = await _postService.GetPostsByPage(id, pageNumber);
 
-                    _cache.Set(CacheKeys.PostsByPage + id + pageNumber, posts, CacheKeys.Expiration);
+                    _cache.Set(CacheKeys.PostsByPage + pageNumber, posts, CacheKeys.Expiration);
                 }
 
                 if (!_cache.TryGetValue(CacheKeys.PinnedPosts, out pinnedPosts))
                 {
-                    pinnedPosts = await _postService.GetPinnedPosts(id);
+                    pinnedPosts = await _postService.GetPinnedPosts();
 
-                    _cache.Set(CacheKeys.PinnedPosts + id + pageNumber, pinnedPosts, CacheKeys.Expiration);
+                    _cache.Set(CacheKeys.PinnedPosts, pinnedPosts, CacheKeys.Expiration);
                 }
             }
             else
             {
                 forum = await _forumService.GetById(id);
                 posts = await _postService.GetPostsByPage(id, pageNumber);
-                pinnedPosts = await _postService.GetPinnedPosts(id);
+                pinnedPosts = await _postService.GetPinnedPosts();
             }
 
             if (pageNumber == 1)
-                posts = pinnedPosts.Concat(posts);
+                posts = pinnedPosts.Concat(posts).Take(25); // le nombre de sujets sera potentiellement inférieur à cause du masquage des sujets "noir" ou "rose"
 
-            var postListings = new List<PostListingModel>();
+            var postListing = new List<PostListingModel>();
 
             foreach (var post in posts)
-                postListings.Add(await BuildPostListing(post));
+                postListing.Add(await BuildPostListing(post));
 
             var model = new ForumTopicModel
             {
-                Posts = postListings,
-                Forum = BuildForumListing(forum),
+                Posts = postListing,
+                Forum = BuildForumListing(forum)
             };
 
             return Json(model);
@@ -109,21 +109,20 @@ namespace Forum.Controllers
         private async Task<PostListingModel> BuildPostListing(Post post)
         {
             var userRoles = await _userManager.GetRolesAsync(post.User);
-            var repliesCount = await _replyService.GetRepliesCountByPost(post.Id).ConfigureAwait(false);
 
             return new PostListingModel
             {
                 Id = post.Id,
                 Title = post.Title,
-                AuthorId = post.User.Id,
+                AuthorId = post.UserId,
                 AuthorName = post.User.UserName,
                 AuthorRole = userRoles.FirstOrDefault(),
                 LastReplyDate = post.LastReplyDate,
-                RepliesCount = repliesCount,
+                RepliesCount = await _replyService.GetRepliesCountByPost(post.Id),
                 IsPinned = post.IsPinned,
                 IsLocked = post.IsLocked,
                 HasPoll = post.Poll == null ? false : true,
-                Type = post.Type,
+                Type = post.Type
             };
         }
 

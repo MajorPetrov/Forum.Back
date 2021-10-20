@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Forum.Models.Badge
+namespace ForumJV.Models.Badge
 {
     public class BadgeListingModel
     {

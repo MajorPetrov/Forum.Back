@@ -1,6 +1,6 @@
 using System;
 
-namespace Forum.Models.Badge
+namespace ForumJV.Models.Badge
 {
     public class BadgeModel
     {

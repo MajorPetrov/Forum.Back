@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Forum.Data.Models;
+using ForumJV.Data.Models;
 
-namespace Forum.Data.Services
+namespace ForumJV.Data.Services
 {
     public interface IForum
     {

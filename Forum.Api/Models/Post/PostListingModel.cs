@@ -1,8 +1,7 @@
 using System;
-using Forum.Data;
-using Forum.Models.Forum;
+using ForumJV.Data;
 
-namespace Forum.Models.Post
+namespace ForumJV.Models.Post
 {
     public class PostListingModel
     {

@@ -1,4 +1,4 @@
-namespace Forum.Models.Manage
+namespace ForumJV.Models.Manage
 {
     public class GenerateRecoveryCodesModel
     {

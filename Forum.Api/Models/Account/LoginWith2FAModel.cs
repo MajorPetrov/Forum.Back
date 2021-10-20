@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Forum.Models.Account
+namespace ForumJV.Models.Account
 {
     public class LoginWith2FAModel
     {

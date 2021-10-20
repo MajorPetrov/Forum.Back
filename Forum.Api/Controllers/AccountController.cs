@@ -1,8 +1,7 @@
 using System;
-using System.Net;
-using System.IO;
 using System.Web;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication;
@@ -14,13 +13,13 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json.Linq;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Data.Options;
-using Forum.Models.Account;
-using Forum.Extensions;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Data.Options;
+using ForumJV.Models.Account;
+using ForumJV.Extensions;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     [ValidateAntiForgeryToken]
@@ -95,7 +94,7 @@ namespace Forum.Controllers
             {
                 AllowRefresh = true,
                 IsPersistent = true,
-                IssuedUtc = DateTime.Now,
+                IssuedUtc = DateTime.UtcNow,
             };
 
             try
@@ -168,7 +167,7 @@ namespace Forum.Controllers
             {
                 AllowRefresh = true,
                 IsPersistent = true,
-                IssuedUtc = DateTime.Now,
+                IssuedUtc = DateTime.UtcNow,
             };
 
             try
@@ -241,7 +240,7 @@ namespace Forum.Controllers
             {
                 AllowRefresh = true,
                 IsPersistent = true,
-                IssuedUtc = DateTime.Now,
+                IssuedUtc = DateTime.UtcNow,
             };
 
             try
@@ -313,7 +312,7 @@ namespace Forum.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Register(RegisterModel model)
         {
-            if (!IsReCaptchValid(model.CaptchaResponse))
+            if (!await IsReCaptchValid(model.CaptchaResponse))
                 return BadRequest(new { error = "Echec de vérification du captcha" });
 
             if (!ModelState.IsValid)
@@ -343,7 +342,7 @@ namespace Forum.Controllers
                 UserName = model.UserName,
                 Email = model.Email,
                 ProfileImageUrl = "/images/users/default.png",
-                MemberSince = DateTime.Now,
+                MemberSince = DateTime.UtcNow,
                 IpAddress = HttpContext.GetRemoteIPAddress().ToString()
             };
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -357,7 +356,7 @@ namespace Forum.Controllers
 
                 try
                 {
-                    await _emailSender.SendEmailAsync(model.Email, "Email de confirmation forum",
+                    await _emailSender.SendEmailAsync(model.Email, "Email de confirmation Forum",
                         $"Veuillez confirmer votre compte en cliquant ici : {callbackUrl}");
                 }
                 catch (Exception exception)
@@ -477,22 +476,17 @@ namespace Forum.Controllers
             return false;
         }
 
-        private bool IsReCaptchValid(string captchaResponse)
+        private async Task<bool> IsReCaptchValid(string captchaResponse)
         {
             var apiUrl = "https://www.google.com/recaptcha/api/siteverify?secret={0}&response={1}";
             var requestUri = string.Format(apiUrl, _options.SecretKey, captchaResponse);
-            var request = (HttpWebRequest)WebRequest.Create(requestUri);
+            var httpClient = new HttpClient();
+            var request = await httpClient.PostAsync(requestUri, null);
+            var response = await request.Content.ReadAsStringAsync();
+            var jResponse = JObject.Parse(response);
+            var isSuccess = jResponse.Value<bool>("success");
 
-            using (WebResponse response = request.GetResponse())
-            {
-                using (StreamReader stream = new StreamReader(response.GetResponseStream()))
-                {
-                    var jResponse = JObject.Parse(stream.ReadToEnd());
-                    var isSuccess = jResponse.Value<bool>("success");
-
-                    return isSuccess;
-                }
-            }
+            return isSuccess;
         }
 
         /// <summary>

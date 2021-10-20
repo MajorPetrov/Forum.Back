@@ -2,15 +2,16 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Forum.Data;
-using Forum.Data.Models;
-using Forum.Data.Services;
+using ForumJV.Data;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
 
-namespace Forum.Services
+namespace ForumJV.Services
 {
     public class PostService : IPost
     {
         private readonly ApplicationDbContext _context;
+        const int postsPerPage = 25;
 
         public PostService(ApplicationDbContext context)
         {
@@ -27,9 +28,9 @@ namespace Forum.Services
                 .FirstOrDefaultAsync();
         }
 
-        public async Task<IEnumerable<Post>> GetPinnedPosts(int forumId)
+        public async Task<IEnumerable<Post>> GetPinnedPosts()
         {
-            return await _context.Posts.Where(post => post.IsPinned && post.Forum.Id == forumId)
+            return await _context.Posts.Where(post => post.IsPinned)
                 .Include(post => post.User)
                 .Include(post => post.Poll)
                 .OrderByDescending(post => post.LastReplyDate).ToListAsync();
@@ -37,42 +38,46 @@ namespace Forum.Services
 
         public async Task<IEnumerable<Post>> GetFilteredPosts(string searchMode, string searchQuery, int pageNumber)
         {
-            var startPosition = (pageNumber - 1) * 25;
+            var startPosition = (pageNumber - 1) * postsPerPage;
             var posts = await _context.Posts.Include(post => post.User)
                 .Include(post => post.Forum).ToListAsync();
 
             if (searchMode.Equals("Author"))
             {
-                var normalized = searchQuery.Normalize().ToUpperInvariant();
-
-                return posts.Where(post => post.User.NormalizedUserName.Contains(normalized))
-                    .OrderByDescending(post => post.LastReplyDate).Skip(startPosition).Take(25);
+                return await _context.Posts
+                    .Include(post => post.User)
+                    .Include(post => post.Forum)
+                    .Where(post => post.User.NormalizedUserName.Contains(searchQuery.ToUpperInvariant()))
+                        .OrderByDescending(post => post.LastReplyDate).Skip(startPosition).Take(postsPerPage)
+                            .ToListAsync();
             }
             // else if (searchMode.Equals("Content"))
             // {
             //     var normalized = searchQuery.Normalize().ToLowerInvariant();
 
             //     return posts.Where(post => post.Content.ToLower().Contains(normalized))
-            //         .OrderByDescending(post => post.LastReplyDate).Skip(startPosition).Take(25);
+            //         .OrderByDescending(post => post.LastReplyDate).Skip(startPosition).Take(postsPerPage);
             // }
             else
             {
-                var normalized = searchQuery.Normalize().ToLowerInvariant();
-
-                return posts.Where(post => post.Title.ToLower().Contains(normalized))
-                    .OrderByDescending(post => post.LastReplyDate).Skip(startPosition).Take(25);
+                return await _context.Posts
+                    .Include(post => post.User)
+                    .Include(post => post.Forum)
+                    .Where(post => post.Title.ToLower().Contains(searchQuery.ToLowerInvariant()))
+                        .OrderByDescending(post => post.LastReplyDate).Skip(startPosition).Take(postsPerPage)
+                            .ToListAsync();
             }
         }
 
         public async Task<IEnumerable<Post>> GetPostsByPage(int forumId, int pageNumber)
         {
-            var startPosition = (pageNumber - 1) * 25;
+            var startPosition = (pageNumber - 1) * postsPerPage;
 
             return await _context.Posts.Where(post => post.Forum.Id == forumId && !post.IsPinned)
                 .Include(post => post.User)
                 .Include(post => post.Poll)
                 .OrderByDescending(post => post.LastReplyDate)
-                .Skip(startPosition).Take(25).ToListAsync();
+                .Skip(startPosition).Take(postsPerPage).ToListAsync();
         }
 
         public async Task<IEnumerable<Post>> GetPostsByIpAddress(string ipAddress)
@@ -86,14 +91,42 @@ namespace Forum.Services
             return await _context.ArchivedPosts.FirstOrDefaultAsync(post => post.PostId == id);
         }
 
-        public async Task<bool> IsLock(int id)
+        public async Task<FavoritePost> GetFavoritePostByIds(int postId, string userId)
+        {
+            return await _context.FavoritePosts.FirstOrDefaultAsync(post => post.PostId == postId && post.UserId == userId);
+        }
+
+        public async Task<FollowedPost> GetFollowedPostByIds(int postId, string userId)
+        {
+            return await _context.FollowedPost.FirstOrDefaultAsync(post => post.PostId == postId && post.UserId == userId);
+        }
+
+        public async Task<bool> IsLocked(int id)
         {
             return await _context.ArchivedPosts.AnyAsync(arch => arch.PostId == id);
         }
 
+        public async Task<bool> IsFavorite(int postId, string userId)
+        {
+            return await _context.FavoritePosts.AnyAsync(fav => fav.PostId == postId && fav.UserId == userId);
+        }
+
+        public async Task<bool> IsFollowed(int postId, string userId)
+        {
+            return await _context.FollowedPost.AnyAsync(fol => fol.PostId == postId && fol.UserId == userId);
+        }
+
         public async Task Create(Post post)
         {
+            // var i = 1;
+            // foreach (var item in _context.Polls)
+            // {
+            //     item.Id = i;
+            //     i++;
+            // }
+
             // à supprimer lors du passage au Guid
+            // la colonne p1.PollId n'existe pas
             var lastPost = await _context.Posts.OrderBy(p => p.Id).LastAsync();
             post.Id += lastPost.Id + 1;
 
@@ -121,8 +154,11 @@ namespace Forum.Services
         {
             var post = await GetById(id);
 
-            if (await IsLock(id))
+            if (await IsLocked(id))
                 await Unlock(id);
+
+            if (post.Poll != null)
+                _context.Polls.Remove(post.Poll);
 
             _context.Remove(post);
             await _context.SaveChangesAsync();
@@ -137,6 +173,7 @@ namespace Forum.Services
             await _context.SaveChangesAsync();
         }
 
+
         public async Task Unlock(int id)
         {
             var archivedPost = await GetArchivedPostById(id);
@@ -144,6 +181,42 @@ namespace Forum.Services
             post.IsLocked = false;
 
             _context.Remove(archivedPost);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task Favorite(int postId, string userId)
+        {
+            _context.Add(new FavoritePost
+            {
+                PostId = postId,
+                UserId = userId
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task Unfavorite(int postId, string userId)
+        {
+            var favoritePost = GetFavoritePostByIds(postId, userId);
+
+            _context.Remove(favoritePost);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task Follow(int postId, string userId)
+        {
+            _context.Add(new FollowedPost
+            {
+                PostId = postId,
+                UserId = userId
+            });
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task Unfollow(int postId, string userId)
+        {
+            var followedPost = GetFollowedPostByIds(postId, userId);
+
+            _context.Remove(followedPost);
             await _context.SaveChangesAsync();
         }
 

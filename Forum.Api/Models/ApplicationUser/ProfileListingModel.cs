@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Forum.Models.ApplicationUser
+namespace ForumJV.Models.ApplicationUser
 {
     public class ProfileListingModel
     {

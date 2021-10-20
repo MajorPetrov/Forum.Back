@@ -8,11 +8,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.Manage;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.Manage;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     [Authorize]
@@ -67,7 +67,7 @@ namespace Forum.Controllers
 
                 try
                 {
-                    await _emailSender.SendEmailAsync(model.Email, "Email de confirmation forum",
+                    await _emailSender.SendEmailAsync(model.Email, "Email de confirmation Forum",
                         $"Veuillez confirmer votre compte en cliquant ici : {callbackUrl}");
                 }
                 catch (Exception exception)
@@ -333,7 +333,7 @@ namespace Forum.Controllers
 
         private string GenerateQrCodeUri(string userName, string unformattedKey)
         {
-            return string.Format(_authenticatorUriFormat, _urlEncoder.Encode("forum"),
+            return string.Format(_authenticatorUriFormat, _urlEncoder.Encode("Forum"),
                 _urlEncoder.Encode(userName), unformattedKey);
         }
     }

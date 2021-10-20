@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Forum.Models.Badge;
+using ForumJV.Models.Badge;
 
-namespace Forum.Models.ApplicationUser
+namespace ForumJV.Models.ApplicationUser
 {
     public class ProfileModel
     {

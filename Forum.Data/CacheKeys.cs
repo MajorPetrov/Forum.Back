@@ -1,6 +1,6 @@
 using System;
 
-namespace Forum.Data
+namespace ForumJV.Data
 {
     public static class CacheKeys
     {

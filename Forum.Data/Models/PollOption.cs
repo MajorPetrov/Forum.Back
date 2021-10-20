@@ -1,9 +1,10 @@
-namespace Forum.Data.Models
+namespace ForumJV.Data.Models
 {
-    public class PollOption
+    public class PollOption : BaseEntity
     {
-        public int Id { get; set; }
         public string Answer { get; set; }
-        public virtual Poll Poll { get; set; }
+        
+        public int PollId { get; set; }
+        public Poll Poll { get; set; }
     }
 }

@@ -1,7 +1,7 @@
 using System;
-using Forum.Data;
+using ForumJV.Data;
 
-namespace Forum.Models.Reply
+namespace ForumJV.Models.Reply
 {
     public class PostReplyModel
     {

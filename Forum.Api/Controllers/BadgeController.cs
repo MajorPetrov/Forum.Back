@@ -6,11 +6,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.Badge;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.Badge;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     [Authorize]
@@ -47,7 +47,7 @@ namespace Forum.Controllers
 
         [HttpPost("[action]")]
         [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> AddBadge(BadgeModel model, IFormFile file)
+        public async Task<IActionResult> Create(BadgeModel model, IFormFile file)
         {
             if (!ModelState.IsValid)
             {
@@ -87,7 +87,7 @@ namespace Forum.Controllers
 
         [HttpPost("[action]")]
         [Authorize(Roles = "Administrator")]
-        public async Task<IActionResult> DeleteBadge(int id)
+        public async Task<IActionResult> Delete(int id)
         {
             try
             {

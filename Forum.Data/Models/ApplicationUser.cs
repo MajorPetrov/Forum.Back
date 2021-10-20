@@ -1,7 +1,7 @@
 using System;
 using Microsoft.AspNetCore.Identity;
 
-namespace Forum.Data.Models
+namespace ForumJV.Data.Models
 {
     public class ApplicationUser : IdentityUser
     {

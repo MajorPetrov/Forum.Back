@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Forum.Data;
+using ForumJV.Data;
 
-namespace Forum.Models.Post
+namespace ForumJV.Models.Post
 {
     public class NewPostModel
     {

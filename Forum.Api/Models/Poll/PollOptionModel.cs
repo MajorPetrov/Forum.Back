@@ -1,4 +1,4 @@
-namespace Forum.Models.Poll
+namespace ForumJV.Models.Poll
 {
     public class PollOptionModel
     {

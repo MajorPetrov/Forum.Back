@@ -1,4 +1,4 @@
-namespace Forum.Models.Forum
+namespace ForumJV.Models.Forum
 {
     public class ForumListingModel
     {

@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Forum.Tests.WebSocket
+namespace ForumJV.Tests.WebSocket
 {
     [TestFixture]
     public class UnitTest1

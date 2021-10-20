@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.Extensions.Options;
 using SendGrid;
 using SendGrid.Helpers.Mail;
-using Forum.Data.Options;
+using ForumJV.Data.Options;
 
-namespace Forum.Services
+namespace ForumJV.Services
 {
     public class EmailSender : IEmailSender
     {
@@ -26,7 +26,7 @@ namespace Forum.Services
             var client = new SendGridClient(apiKey);
             var msg = new SendGridMessage()
             {
-                From = new EmailAddress("administration@forum.org", "Forum forum"),
+                From = new EmailAddress("administration@forum.fr", "Forum"),
                 Subject = subject,
                 PlainTextContent = message,
                 HtmlContent = message

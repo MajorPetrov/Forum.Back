@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace Forum.Data.Migrations
+namespace ForumJV.Data.Migrations
 {
     public partial class CasadeDeleteReplies : Migration
     {

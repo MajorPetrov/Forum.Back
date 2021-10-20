@@ -2,7 +2,7 @@ using System.Linq;
 using System.Net;
 using Microsoft.AspNetCore.Http;
 
-namespace Forum.Extensions
+namespace ForumJV.Extensions
 {
     public static class HttpContextExtension
     {

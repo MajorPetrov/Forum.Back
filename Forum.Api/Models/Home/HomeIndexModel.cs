@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Forum.Models.Post;
+using ForumJV.Models.Post;
 
-namespace Forum.Models.Home
+namespace ForumJV.Models.Home
 {
     public class HomeIndexModel
     {

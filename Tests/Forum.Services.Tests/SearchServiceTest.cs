@@ -2,10 +2,10 @@ using System;
 using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using NUnit.Framework;
-using Forum.Data;
-using Forum.Data.Models;
+using ForumJV.Data;
+using ForumJV.Data.Models;
 
-namespace Forum.Services.Tests
+namespace ForumJV.Services.Tests
 {
     [TestFixture]
     public class SearchServiceTest

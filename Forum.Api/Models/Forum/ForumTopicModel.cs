@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using Forum.Models.Post;
+using ForumJV.Models.Post;
 
-namespace Forum.Models.Forum
+namespace ForumJV.Models.Forum
 {
     public class ForumTopicModel
     {

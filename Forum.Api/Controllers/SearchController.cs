@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.Post;
-using Forum.Models.Search;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.Post;
+using ForumJV.Models.Search;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     public class SearchController : Controller
@@ -72,7 +72,7 @@ namespace Forum.Controllers
             {
                 Id = post.Id,
                 Title = post.Title,
-                AuthorId = post.User.Id,
+                AuthorId = post.UserId,
                 AuthorName = post.User.UserName,
                 AuthorRole = userRoles.FirstOrDefault(),
                 LastReplyDate = post.LastReplyDate,

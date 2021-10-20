@@ -4,10 +4,10 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
-using Forum.Data.Services;
-using Forum.Extensions;
+using ForumJV.Data.Services;
+using ForumJV.Extensions;
 
-namespace Forum.WebSocket
+namespace ForumJV.WebSocket
 {
     public class UserHub : Hub
     {

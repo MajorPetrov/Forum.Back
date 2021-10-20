@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Forum.Models.Forum
+namespace ForumJV.Models.Forum
 {
     public class ForumIndexModel
     {

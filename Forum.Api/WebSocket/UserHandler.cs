@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Forum.WebSocket
+namespace ForumJV.WebSocket
 {
     public static class UserHandler
     {

@@ -1,4 +1,4 @@
-namespace Forum.Data.Models
+namespace ForumJV.Data.Models
 {
     public class Badge
     {

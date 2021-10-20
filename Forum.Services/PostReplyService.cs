@@ -2,11 +2,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
-using Forum.Data;
-using Forum.Data.Models;
-using Forum.Data.Services;
+using ForumJV.Data;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
 
-namespace Forum.Services
+namespace ForumJV.Services
 {
     public class PostReplyService : IPostReply
     {
@@ -54,6 +54,16 @@ namespace Forum.Services
         public async Task<int> GetRepliesCountByPost(int id)
         {
             return await _context.PostReplies.CountAsync(reply => reply.Post.Id == id);
+        }
+
+        public async Task<int> GetReplyPage(PostReply reply)
+        {
+            var replies = await _context.PostReplies.Where(reply => reply.Post.Id == reply.Post.Id)
+                .OrderBy(reply => reply.Created)
+                .ToListAsync();
+            var index = replies.IndexOf(reply);
+
+            return index / 10 + 1;
         }
 
         public async Task Create(PostReply reply)

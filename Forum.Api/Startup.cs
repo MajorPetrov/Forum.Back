@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.AspNetCore.CookiePolicy;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -18,14 +17,16 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.OpenApi.Models;
 using AspNetCoreRateLimit;
-using Forum.Data;
-using Forum.Data.Options;
-using Forum.Data.Services;
-using Forum.Data.Models;
-using Forum.Services;
-using Forum.WebSocket;
+using Firewall;
+using ForumJV.Data;
+using ForumJV.Data.Options;
+using ForumJV.Data.Services;
+using ForumJV.Data.Models;
+using ForumJV.Services;
+using ForumJV.WebSocket;
+using ForumJV.Extensions;
 
-namespace Forum
+namespace ForumJV
 {
     public class Startup
     {
@@ -72,9 +73,9 @@ namespace Forum
             {
                 c.SwaggerDoc("v1", new OpenApiInfo
                 {
-                    Title = "API du Forum forum",
+                    Title = "API du forum",
                     Version = "v1",
-                    Description = "Documentation officielle de l'API du Forum forum",
+                    Description = "Documentation officielle de l'API du forum",
                 });
 
                 // Set the comments path for the Swagger JSON and UI.
@@ -128,6 +129,7 @@ namespace Forum
             services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
             services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
+            services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
             services.Configure<IpRateLimitOptions>(Configuration.GetSection("IpRateLimiting"));
             services.Configure<IpRateLimitPolicies>(Configuration.GetSection("IpRateLimitPolicies"));
             services.Configure<CaptchaKeys>(Configuration.GetSection("CaptchaKeys"));
@@ -141,13 +143,21 @@ namespace Forum
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseDatabaseErrorPage();
+                // app.UseDatabaseErrorPage();
             }
             else
             {
                 app.UseExceptionHandler("/Error");
                 app.UseHsts();
             }
+
+            var rules = FirewallRulesEngine
+                            .DenyAllAccess()
+                            .ExceptFromCloudflare()
+                            .ExceptFromCountryCodes()
+                            .ExceptFromLocalhost();
+
+            app.UseFirewall(rules);
 
             app.UseForwardedHeaders(new ForwardedHeadersOptions { ForwardedHeaders = ForwardedHeaders.All });
 
@@ -184,8 +194,8 @@ namespace Forum
 
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/docs/v1/docs.json", "API du Forum Elite de la Nation v1");
-                c.RoutePrefix = "/docs";
+                c.SwaggerEndpoint("/docs/v1/docs.json", "API du Forum v1");
+                c.RoutePrefix = "";
             });
         }
     }

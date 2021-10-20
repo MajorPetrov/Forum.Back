@@ -1,10 +1,7 @@
-using System.Threading.Tasks;
-using Forum.Data.Models;
-
-namespace Forum.Data.Services
+namespace ForumJV.Data.Services
 {
     public interface IAccount
     {
-        Task<string> CreateToken(ApplicationUser user)
+        bool VerifyLegacyPassword(string actualPassword, string password);
     }
 }

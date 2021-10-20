@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
-namespace Forum.Data.Migrations
+namespace ForumJV.Data.Migrations
 {
     public partial class ClePrimairePollVote : Migration
     {

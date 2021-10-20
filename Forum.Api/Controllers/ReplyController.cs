@@ -1,16 +1,18 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.Reply;
-using Forum.Extensions;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.Reply;
+using ForumJV.Extensions;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     [Authorize]
@@ -19,14 +21,16 @@ namespace Forum.Controllers
     {
         private readonly IPost _postService;
         private readonly IPostReply _replyService;
+        private readonly INotification _notificationService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<ApplicationUser> _logger;
 
-        public ReplyController(IPost postService, IPostReply replyService,
+        public ReplyController(IPost postService, IPostReply replyService, INotification notificationService,
             UserManager<ApplicationUser> userManager, ILogger<ApplicationUser> logger)
         {
             _postService = postService;
             _replyService = replyService;
+            _notificationService = notificationService;
             _userManager = userManager;
             _logger = logger;
         }
@@ -48,7 +52,7 @@ namespace Forum.Controllers
             var model = new PostReplyModel
             {
                 Id = reply.Id,
-                AuthorId = reply.User.Id,
+                AuthorId = reply.UserId,
                 AuthorName = reply.User.UserName,
                 AuthorImageUrl = reply.User.ProfileImageUrl,
                 AuthorCancer = reply.User.Cancer,
@@ -56,7 +60,7 @@ namespace Forum.Controllers
                 AuthorRole = userRoles.FirstOrDefault(),
                 Content = reply.Content,
                 IsPinned = reply.IsPinned,
-                PostId = reply.Post.Id,
+                PostId = reply.PostId,
                 PostType = reply.Post.Type,
                 Created = reply.Created
             };
@@ -84,7 +88,7 @@ namespace Forum.Controllers
             if (user.LockoutEnd != null)
                 return Json(new { error = $"{user.UserName} est banni" });
 
-            if (await _postService.IsLock(model.PostId) && !User.IsInRole("Moderator") && !User.IsInRole("Administrator"))
+            if (await _postService.IsLocked(model.PostId) && !User.IsInRole("Moderator") && !User.IsInRole("Administrator"))
                 return Forbid();
             // return Json(new { error = "Vous n'avez pas la permission pour cela" });
 
@@ -98,6 +102,22 @@ namespace Forum.Controllers
             catch (Exception exception)
             {
                 return BadRequest(new { error = $"Impossible de poster la réponse {reply.Id} : {exception.InnerException}" });
+            }
+
+            var mentions = await FindMentions(reply.Content);
+
+            if (mentions.Any())
+            {
+                var notifications = BuildNotifications(user, mentions, reply);
+
+                try
+                {
+                    await _notificationService.Create(notifications);
+                }
+                catch (Exception exception)
+                {
+                    return BadRequest(new { error = $"Impossible de notifier l'utilisateur {mentions} : {exception.InnerException}" });
+                }
             }
 
             return Json(new { id = reply.Post.Id });
@@ -127,14 +147,14 @@ namespace Forum.Controllers
             if (reply == null)
                 return NotFound(new { error = $"La réponse d'identifiant : '{model.Id}' n'existe pas." });
 
-            if (!user.Id.Equals(reply.User.Id) && !User.IsInRole("Administrator"))
+            if (!user.Id.Equals(reply.UserId) && !User.IsInRole("Administrator"))
                 return Forbid();
             // return Json(new { error = "Vous n'avez pas la permission pour cela" });
 
             try
             {
                 await _replyService.Edit(model.Id, model.Content);
-                await _postService.UpdateLastReplyDate(reply.Post.Id);
+                await _postService.UpdateLastReplyDate(reply.PostId);
             }
             catch (Exception exception)
             {
@@ -160,8 +180,13 @@ namespace Forum.Controllers
 
             try
             {
+                var notifsToDelete = await _notificationService.GetByReplyId(id);
+
+                if (notifsToDelete.Any())
+                    await _notificationService.DeleteMany(notifsToDelete);
+
                 await _replyService.Delete(id);
-                await _postService.UpdateLastReplyDate(reply.Post.Id);
+                await _postService.UpdateLastReplyDate(reply.PostId);
             }
             catch (Exception exception)
             {
@@ -170,7 +195,7 @@ namespace Forum.Controllers
 
             _logger.LogInformation($"{User.Identity.Name} a supprimé la réponse {reply.Id}");
 
-            return Json(new { id = reply.Post.Id });
+            return Json(new { id = reply.PostId });
         }
 
         [HttpPost("[action]")]
@@ -183,7 +208,7 @@ namespace Forum.Controllers
 
             var userId = _userManager.GetUserId(User);
 
-            if (!userId.Equals(reply.Post.User.Id) && !User.IsInRole("Moderator") && !User.IsInRole("Administrator"))
+            if (!userId.Equals(reply.Post.UserId) && !User.IsInRole("Moderator") && !User.IsInRole("Administrator"))
                 return Forbid();
             // return Json(new { error = "Vous n'avez pas la permission pour cela" });
 
@@ -198,21 +223,53 @@ namespace Forum.Controllers
 
             _logger.LogInformation($"{User.Identity.Name} a épinglé la réponse {reply.Id}");
 
-            return Json(new { id = reply.Post.Id });
+            return Json(new { id = reply.PostId });
         }
 
         private async Task<PostReply> BuildReply(NewReplyModel reply, ApplicationUser user)
         {
-            var post = await _postService.GetById(reply.PostId);
-
             return new PostReply
             {
                 Content = reply.Content,
                 IpAddress = HttpContext.GetRemoteIPAddress().ToString(),
-                Created = DateTime.Now,
+                Created = DateTime.UtcNow,
                 User = user,
-                Post = post
+                Post = await _postService.GetById(reply.PostId)
             };
+        }
+
+        private async Task<IEnumerable<ApplicationUser>> FindMentions(string content)
+        {
+            var users = new List<ApplicationUser>();
+            var regex = new Regex("@(?<name>[^\\s]+)");
+
+            var usersToNotify = regex.Matches(content)
+                .Cast<Match>()
+                .Select(m => m.Groups["name"].Value)
+                .ToArray();
+
+            foreach (var userName in usersToNotify)
+                users.Add(await _userManager.FindByNameAsync(userName));
+
+            return users;
+        }
+
+        private IEnumerable<Notification> BuildNotifications(ApplicationUser user, IEnumerable<ApplicationUser> mentionedUsers, PostReply reply)
+        {
+            var notifications = new List<Notification>();
+
+            foreach (var mention in mentionedUsers)
+            {
+                notifications.Add(new Notification
+                {
+                    User = user,
+                    Created = DateTime.UtcNow,
+                    MentionedUserId = mention.Id,
+                    ReplyId = reply.Id
+                });
+            }
+
+            return notifications;
         }
     }
 }

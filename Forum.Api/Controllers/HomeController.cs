@@ -3,13 +3,13 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models;
-using Forum.Models.Home;
-using Forum.Models.Post;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models;
+using ForumJV.Models.Home;
+using ForumJV.Models.Post;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     public class HomeController : Controller
@@ -90,7 +90,7 @@ namespace Forum.Controllers
             {
                 Id = post.Id,
                 Title = post.Title,
-                AuthorId = post.User.Id,
+                AuthorId = post.UserId,
                 AuthorName = post.User.UserName,
                 AuthorCancer = post.User.Cancer,
                 LastReplyDate = post.LastReplyDate,

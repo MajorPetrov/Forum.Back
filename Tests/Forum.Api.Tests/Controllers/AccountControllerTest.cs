@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Forum.Tests.Controllers
+namespace ForumJV.Tests.Controllers
 {
     [TestFixture]
     public class AccountControllerTest

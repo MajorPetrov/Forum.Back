@@ -1,6 +1,6 @@
 using NUnit.Framework;
 
-namespace Forum.Tests.Extensions
+namespace ForumJV.Tests.Extensions
 {
     [TestFixture]
     public class UnitTest1

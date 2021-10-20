@@ -1,10 +1,9 @@
-using System;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using Forum.Data.Models;
+using ForumJV.Data.Models;
 
-namespace Forum.Data
+namespace ForumJV.Data
 {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
@@ -15,9 +14,12 @@ namespace Forum.Data
         public DbSet<Badge> Badges { get; set; }
         public DbSet<UserBadge> UserBadges { get; set; }
         public DbSet<ArchivedPost> ArchivedPosts { get; set; }
+        public DbSet<FavoritePost> FavoritePosts { get; set; }
+        public DbSet<FollowedPost> FollowedPost { get; set; }
         public DbSet<Poll> Polls { get; set; }
         public DbSet<PollOption> PollOptions { get; set; }
         public DbSet<PollVote> PollVotes { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
         public DbSet<IdentityUserRole<string>> AspNetUserRoles { get; set; }
         public DbSet<IdentityRole> AspNetRoles { get; set; }
 
@@ -66,7 +68,7 @@ namespace Forum.Data
                 .WithMany(poll => poll.Options)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Utilisation de UserId et BadgeId comme coupe de clés primaires
+            // Utilisation de UserId et BadgeId comme couple de clés primaires
             builder.Entity<UserBadge>()
                 .HasKey(badge => new { badge.UserId, badge.BadgeId });
 
@@ -74,13 +76,17 @@ namespace Forum.Data
             builder.Entity<ArchivedPost>()
                 .HasKey(post => post.PostId);
 
-            // Utilisation de PostId comme clé primaire
-            builder.Entity<Poll>()
-                .HasKey(poll => poll.PostId);
-
-            // Utilisation de UserId comme clé primaire
+            // Utilisation de UserId et OptionId comme couple de clés primaires
             builder.Entity<PollVote>()
                 .HasKey(vote => new { vote.UserId, vote.OptionId });
+
+            // Utilisation de PostId et UserId comme couple de clés primaires
+            builder.Entity<FavoritePost>()
+                .HasKey(fav => new { fav.PostId, fav.UserId });
+
+            // Utilisation de PostId et UserId comme couple de clés primaires
+            builder.Entity<FollowedPost>()
+                .HasKey(fav => new { fav.PostId, fav.UserId });
         }
     }
 }

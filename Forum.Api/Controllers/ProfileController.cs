@@ -8,12 +8,12 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.ApplicationUser;
-using Forum.Models.Badge;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.ApplicationUser;
+using ForumJV.Models.Badge;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     [Authorize]
@@ -250,7 +250,7 @@ namespace Forum.Controllers
             }
             catch (Exception exception)
             {
-                return BadRequest(new { error = $"Impossible de débannir l'utilisateur '{id}' : {exception.InnerException}" });
+                return BadRequest(new { error = $"Impossible de bannir l'utilisateur '{id}' : {exception.InnerException}" });
             }
 
             _logger.LogInformation($"{User.Identity.Name} a réhabilité {user.UserName}");

@@ -10,7 +10,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/Forum.Api/bin/Debug/netcoreapp3.1/Forum.Api.dll",
+            "program": "${workspaceFolder}/Forum.Api/bin/Debug/net6.0/Forum.Api.dll",
             "args": [],
             "cwd": "${workspaceFolder}/Forum.Api",
             "stopAtEntry": false,

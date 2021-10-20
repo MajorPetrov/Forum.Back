@@ -1,6 +1,4 @@
-using System;
-
-namespace Forum.Models
+namespace ForumJV.Models
 {
     public class ErrorViewModel
     {

@@ -1,7 +1,7 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace Forum.Models.Manage
+namespace ForumJV.Models.Manage
 {
     public class EnableAuthenticatorModel
     {

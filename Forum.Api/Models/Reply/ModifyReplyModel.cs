@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Forum.Models.Reply
+namespace ForumJV.Models.Reply
 {
     public class ModifyReplyModel
     {

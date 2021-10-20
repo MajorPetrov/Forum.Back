@@ -2,11 +2,11 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Forum.Data;
-using Forum.Data.Models;
-using Forum.Data.Services;
+using ForumJV.Data;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
 
-namespace Forum.Services
+namespace ForumJV.Services
 {
     public class ForumService : IForum
     {

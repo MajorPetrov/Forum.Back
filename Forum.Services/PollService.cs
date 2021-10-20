@@ -1,12 +1,11 @@
 using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using Forum.Data;
-using Forum.Data.Models;
-using Forum.Data.Services;
+using ForumJV.Data;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
 
-namespace Forum.Services
+namespace ForumJV.Services
 {
     public class PollService : IPoll
     {
@@ -20,7 +19,7 @@ namespace Forum.Services
         public async Task<Poll> GetById(int id)
         {
             return await _context.Polls.Include(poll => poll.Options)
-                .FirstOrDefaultAsync(p => p.PostId == id);
+                .FirstOrDefaultAsync(p => p.Id == id);
         }
 
         public async Task<PollOption> GetOptionById(int id)

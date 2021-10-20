@@ -2,20 +2,23 @@ using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Memory;
-using Forum.Data;
-using Forum.Data.Models;
-using Forum.Data.Services;
-using Forum.Models.Post;
-using Forum.Models.Reply;
-using Forum.Models.Poll;
-using Forum.Extensions;
+using ForumJV.Data;
+using ForumJV.Data.Models;
+using ForumJV.Data.Services;
+using ForumJV.Models.Post;
+using ForumJV.Models.Reply;
+using ForumJV.Models.Poll;
+using ForumJV.Extensions;
+// using Forum.Application.Core.UnitOfWork;
+// using Forum.Application.Core.Domain.Services;
 
-namespace Forum.Controllers
+namespace ForumJV.Controllers
 {
     [Route("api/[controller]")]
     public class PostController : Controller
@@ -24,17 +27,22 @@ namespace Forum.Controllers
         private readonly IPostReply _replyService;
         private readonly IForum _forumService;
         private readonly IPoll _pollService;
+        private readonly INotification _notificationService;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<ApplicationUser> _logger;
+        // private readonly ICrudService<Forum.Application.Domain.Models.Post> _postServiceCrud;
+        // private readonly ICrudService<Forum.Application.Domain.Models.Poll> _pollServiceCrud;
+        // private readonly IUnitOfWork _unitOfWork;
         private IMemoryCache _cache;
 
         public PostController(IPost postService, IPostReply replyService, IForum forumService, IPoll pollService,
-            UserManager<ApplicationUser> userManager, ILogger<ApplicationUser> logger, IMemoryCache cache)
+            INotification notificationService, UserManager<ApplicationUser> userManager, ILogger<ApplicationUser> logger, IMemoryCache cache)
         {
             _postService = postService;
             _replyService = replyService;
             _forumService = forumService;
             _pollService = pollService;
+            _notificationService = notificationService;
             _userManager = userManager;
             _logger = logger;
             _cache = cache;
@@ -89,7 +97,7 @@ namespace Forum.Controllers
             {
                 Id = post.Id,
                 Title = post.Title,
-                AuthorId = post.User.Id,
+                AuthorId = post.UserId,
                 AuthorName = post.User.UserName,
                 AuthorImageUrl = post.User.ProfileImageUrl,
                 AuthorCancer = post.User.Cancer,
@@ -101,15 +109,15 @@ namespace Forum.Controllers
                 Replies = await BuildPostReplies(replies),
                 RepliesCount = await _replyService.GetRepliesCountByPost(post.Id),
                 IsPinned = post.IsPinned,
-                IsLocked = await _postService.IsLock(post.Id),
-                ForumId = post.Forum.Id,
+                IsLocked = await _postService.IsLocked(post.Id),
+                ForumId = post.ForumId,
                 ForumName = post.Forum.Title
             };
 
             if (post.Poll != null)
                 model.Poll = await BuildPollModel(post.Poll);
 
-            if (await _postService.IsLock(post.Id))
+            if (await _postService.IsLocked(post.Id))
             {
                 var archivedPost = await _postService.GetArchivedPostById(id);
                 model.LockReason = archivedPost.Reason;
@@ -150,15 +158,6 @@ namespace Forum.Controllers
 
             var post = await BuildPost(postModel, user);
 
-            try
-            {
-                await _postService.Create(post);
-            }
-            catch (Exception exception)
-            {
-                return BadRequest(new { error = $"Impossible de poster le sujet {post.Id} : {exception.InnerException}" });
-            }
-
             if (hasPoll)
             {
                 if (pollModel.Question == null)
@@ -173,17 +172,31 @@ namespace Forum.Controllers
                 if (pollModel.Options.Contains(null))
                     return Json(new { error = "Les réponses ne peuvent pas être vides" });
 
-                var poll = BuildPoll(post.Id, pollModel);
+                post.Poll = BuildPoll(pollModel);
+            }
+
+            try
+            {
+                await _postService.Create(post);
+            }
+            catch (Exception exception)
+            {
+                return BadRequest(new { error = $"Impossible de poster le sujet {post.Id} : {exception.InnerException}" });
+            }
+
+            var mentions = await FindMentions(post.Content);
+
+            if (mentions.Any())
+            {
+                var notifications = BuildNotifications(user, mentions, post);
 
                 try
                 {
-                    await AddPoll(post.Id, pollModel);
+                    await _notificationService.Create(notifications);
                 }
                 catch (Exception exception)
                 {
-                    await Delete(post.Id);
-
-                    return BadRequest(new { error = $"Impossible de créer le sondage {post.Id} : {exception.InnerException}" });
+                    return BadRequest(new { error = $"Impossible de notifier l'utilisateur {mentions} : {exception.InnerException}" });
                 }
             }
 
@@ -305,8 +318,13 @@ namespace Forum.Controllers
 
             try
             {
+                var notifsToDelete = await _notificationService.GetByPostId(id);
+
+                if (notifsToDelete.Any())
+                    await _notificationService.DeleteMany(notifsToDelete);
+
                 if (post.Poll != null)
-                    await _pollService.Delete(id);
+                    await _pollService.Delete(post.Poll.Id);
 
                 await _postService.Delete(id);
             }
@@ -317,7 +335,7 @@ namespace Forum.Controllers
 
             _logger.LogInformation($"{User.Identity.Name} a supprimé le sujet {post.Id}");
 
-            return Json(new { success = "Le sujet est bien supprimé", id = post.Forum.Id });
+            return Json(new { success = "Le sujet est bien supprimé", id = post.ForumId });
         }
 
         [HttpPost("[action]")]
@@ -360,7 +378,7 @@ namespace Forum.Controllers
                 return Forbid();
             // return Json(new { error = "Vous n'avez pas la permission pour cela" });
 
-            if (!await _postService.IsLock(id))
+            if (!await _postService.IsLocked(id))
             {
                 var archivedPost = new ArchivedPost
                 {
@@ -395,8 +413,16 @@ namespace Forum.Controllers
                 return NotFound(new { error = $"Le sujet d'identifiant : '{id}' n'existe pas." });
 
             var archivedPost = await _postService.GetArchivedPostById(id);
+
+            if (archivedPost == null)
+                return Json(new { error = $"Le post d'identifiant : '{id}' n\'est pas verrouillé" });
+
             var userId = _userManager.GetUserId(User); // l'utilisateur connecté
             var user = await _userManager.FindByIdAsync(archivedPost.UserId); // l'utilisateur qui a verrouillé le sujet
+
+            if (user == null)
+                return Json(new { error = $"Impossible de charger l'utilisateur d'identifiant : '{user.Id}'." });
+
             var userRole = await _userManager.GetRolesAsync(user);
 
             if (!User.IsInRole("Moderator") && !User.IsInRole("Administrator"))
@@ -434,7 +460,7 @@ namespace Forum.Controllers
         {
             var userId = _userManager.GetUserId(User);
             var option = await _pollService.GetOptionById(optionId);
-            var poll = await _pollService.GetById(option.Poll.PostId);
+            var poll = await _pollService.GetById(option.PollId);
 
             if (option == null)
                 return NotFound(new { error = $"L'option de vote {optionId} n'existe pas." });
@@ -443,7 +469,7 @@ namespace Forum.Controllers
             foreach (var opt in poll.Options)
             {
                 if (await _pollService.HasUserVoted(opt.Id, userId))
-                    return Json(new { error = $"Vous avez déjà voté sur le sondage {option.Poll.PostId}" });
+                    return Json(new { error = $"Vous avez déjà voté sur le sondage {option.PollId}" });
             }
 
             try
@@ -460,31 +486,6 @@ namespace Forum.Controllers
             return Json(model);
         }
 
-        private async Task<IActionResult> AddPoll(int postId, NewPollModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                var errorList = (from item in ModelState.Values
-                                 from error in item.Errors
-                                 select error.ErrorMessage).ToList();
-
-                return Json(new { errorModel = errorList });
-            }
-
-            var poll = BuildPoll(postId, model);
-
-            try
-            {
-                await _pollService.Create(poll);
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-
-            return Json(new { id = poll.PostId });
-        }
-
         private async Task<IEnumerable<PostReplyModel>> BuildPostReplies(IEnumerable<PostReply> replies)
         {
             var repliesModel = new List<PostReplyModel>();
@@ -496,7 +497,7 @@ namespace Forum.Controllers
                 repliesModel.Add(new PostReplyModel
                 {
                     Id = reply.Id,
-                    AuthorId = reply.User.Id,
+                    AuthorId = reply.UserId,
                     AuthorName = reply.User.UserName,
                     AuthorImageUrl = reply.User.ProfileImageUrl,
                     AuthorCancer = reply.User.Cancer,
@@ -504,7 +505,7 @@ namespace Forum.Controllers
                     AuthorRole = userRoles.FirstOrDefault(),
                     Content = reply.Content,
                     IsPinned = reply.IsPinned,
-                    PostId = reply.Post.Id,
+                    PostId = reply.PostId,
                     PostType = reply.Post.Type,
                     Created = reply.Created
                 });
@@ -515,18 +516,16 @@ namespace Forum.Controllers
 
         private async Task<Post> BuildPost(NewPostModel post, ApplicationUser user)
         {
-            var forum = await _forumService.GetById(post.ForumId);
-
             return new Post
             {
                 Title = post.Title,
                 Content = post.Content,
                 IpAddress = HttpContext.GetRemoteIPAddress().ToString(),
                 Type = post.Type,
-                Created = DateTime.Now,
-                LastReplyDate = DateTime.Now,
+                Created = DateTime.UtcNow,
+                LastReplyDate = DateTime.UtcNow,
                 User = user,
-                Forum = forum,
+                Forum = await _forumService.GetById(post.ForumId)
             };
         }
 
@@ -539,7 +538,6 @@ namespace Forum.Controllers
 
             return new PollModel
             {
-                Id = poll.PostId,
                 Question = poll.Question,
                 Options = await BuildPollOptions(poll.Options),
                 VotesCount = votesCount
@@ -565,23 +563,53 @@ namespace Forum.Controllers
             return optionsModel;
         }
 
-        private Poll BuildPoll(int postId, NewPollModel model)
+        private Poll BuildPoll(NewPollModel model)
         {
-            var poll = new Poll
-            {
-                PostId = postId,
-                Question = model.Question,
-            };
+            var poll = new Poll { Question = model.Question };
 
             var options = model.Options.Select(option => new PollOption
             {
                 Answer = option,
-                Poll = poll
+                PollId = poll.Id
             }).ToList();
 
             poll.Options = options;
 
             return poll;
+        }
+
+        private async Task<IEnumerable<ApplicationUser>> FindMentions(string content)
+        {
+            var users = new List<ApplicationUser>();
+            var regex = new Regex("@(?<name>[^\\s]+)");
+
+            var usersToNotify = regex.Matches(content)
+                .Cast<Match>()
+                .Select(m => m.Groups["name"].Value)
+                .ToArray();
+
+            foreach (var userName in usersToNotify)
+                users.Add(await _userManager.FindByNameAsync(userName));
+
+            return users;
+        }
+
+        private IEnumerable<Notification> BuildNotifications(ApplicationUser user, IEnumerable<ApplicationUser> mentionedUsers, Post post)
+        {
+            var notifications = new List<Notification>();
+
+            foreach (var mention in mentionedUsers)
+            {
+                notifications.Add(new Notification
+                {
+                    User = user,
+                    Created = DateTime.UtcNow,
+                    MentionedUserId = mention.Id,
+                    PostId = post.Id
+                });
+            }
+
+            return notifications;
         }
     }
 }
